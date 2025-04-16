@@ -11,7 +11,7 @@ ADMIN_FILE = os.path.join(CONFIG_DIR, "admin.txt")
 CODES_FILE = os.path.join(CONFIG_DIR, "codes.txt")
 QUESTIONS_FILE = os.path.join(CONFIG_DIR, "questions.txt")
 DATABASE_FILE = "database.db"
-WHATSAPP_NUMBER = "919999999999"
+WHATSAPP_NUMBER = "917694993234"
 
 # ===== INITIALIZATION =====
 def create_config_files():
