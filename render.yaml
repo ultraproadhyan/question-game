@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: my-question-game
+    env: python
+    buildCommand: ""
+    startCommand: gunicorn aa:app
+    repo: https://github.com/ultraproadhyan/question-game
+    branch: main
+    region: oregon
+    plan: free
