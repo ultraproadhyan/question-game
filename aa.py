@@ -11,6 +11,7 @@ ADMIN_FILE = os.path.join(CONFIG_DIR, "admin.txt")
 CODES_FILE = os.path.join(CONFIG_DIR, "codes.txt")
 QUESTIONS_FILE = os.path.join(CONFIG_DIR, "questions.txt")
 DATABASE_FILE = "database.db"
+DATA_FILE = "data.txt"  # New file to store results
 WHATSAPP_NUMBER = "917694993234"
 
 # ===== INITIALIZATION =====
@@ -26,7 +27,7 @@ def create_config_files():
             f.write("TESTCODE1\nTESTCODE2")
     if not os.path.exists(QUESTIONS_FILE):
         with open(QUESTIONS_FILE, "w") as f:
-            f.write("What is 2+2?|3|4|5|4\nWhich is a fruit?|Carrot|Apple|Potato|Apple")
+            f.write("What is 2+2?|3|4|5|6|4\nWhich is a fruit?|Carrot|Apple|Potato|Banana|Apple")
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -58,6 +59,46 @@ def init_db():
         conn.commit()
     except Exception as e:
         print(f"Database error: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+def update_data_file():
+    """Update the data.txt file with all test results"""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        tests = cursor.execute("SELECT * FROM tests ORDER BY start_time DESC").fetchall()
+        questions = get_questions()
+        
+        with open(DATA_FILE, "w") as f:
+            f.write("╔════════════════════════════════════════════════════════════════════════════════╗\n")
+            f.write("║                            📝 TEST RESULTS DATABASE                            ║\n")
+            f.write("╠════════╦══════════════╦═══════════════╦═════╦═══════╦═══════╦════════╦═════════╣\n")
+            f.write("║   ID   ║     Name     ║    Phone      ║ Age ║ Score ║ Right ║ Wrong  ║  Time   ║\n")
+            f.write("╠════════╬══════════════╬═══════════════╬═════╬═══════╬═══════╬════════╬═════════╣\n")
+            
+            for test in tests:
+                test_date = format_test_date(test['start_time'])
+                f.write(f"║ {test['id']:6} ║ {test['name'][:12]:12} ║ {test['phone'][:13]:13} ║ {test['age']:3} ║ "
+                        f"{test['score']:2}/{len(questions):2} ║ {test['right_ans']:5} ║ {test['wrong_ans']:6} ║ "
+                        f"{test['duration'] or 'N/A':7} ║\n")
+                
+                # Add details line
+                f.write(f"║        ║ Date: {test_date[:16]:16} ║ Code: {test['code'][:10]:10} ║ "
+                        f"IP: {test['ip'][:15]:15} ║{'':7}║{'':7}║{'':8}║{'':9}║\n")
+                
+                if test != tests[-1]:
+                    f.write("╠════════╬══════════════╬═══════════════╬═════╬═══════╬═══════╬════════╬═════════╣\n")
+            
+            f.write("╚════════╩══════════════╩═══════════════╩═════╩═══════╩═══════╩════════╩═════════╝\n")
+            f.write(f"\n📊 Total Tests: {len(tests)} | Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        
+        return True
+    except Exception as e:
+        print(f"Error updating data file: {e}")
+        return False
     finally:
         if conn:
             conn.close()
@@ -100,15 +141,15 @@ def get_questions():
             return [line.strip().split("|") for line in f if line.strip()]
     except:
         return [
-            ["What is 2+2?", "3", "4", "5", "4"],
-            ["Which is a fruit?", "Carrot", "Apple", "Potato", "Apple"]
+            ["What is 2+2?", "3", "4", "5", "6", "4"],
+            ["Which is a fruit?", "Carrot", "Apple", "Potato", "Banana", "Apple"]
         ]
 
-def add_question(question, option1, option2, option3, correct):
+def add_question(question, option1, option2, option3, option4, correct):
     """Add new question to the question bank"""
     try:
         with open(QUESTIONS_FILE, "a") as f:
-            f.write(f"\n{question}|{option1}|{option2}|{option3}|{correct}")
+            f.write(f"\n{question}|{option1}|{option2}|{option3}|{option4}|{correct}")
         return True
     except:
         return False
@@ -231,7 +272,7 @@ RESULT_HTML = '''<!DOCTYPE html><html><head>
             <span>{{ test_date }}</span>
         </div>
         
-        <a href="/" class="home-btn">Go to Home</a>
+        <a href="https://ultraproadhyan.github.io/MY_web_game/home.html" class="home-btn">Go to Home</a>
     </div>
 </body></html>'''
 
@@ -255,6 +296,7 @@ ADMIN_HTML = '''<!DOCTYPE html><html><head>
             {{ table|safe }}
         </div>
         <a href="/export_csv?password={{ password }}" class="export-btn">Export CSV</a>
+        <a href="/export_txt?password={{ password }}" class="export-btn">Export TXT</a>
     </div>
     
     <div class="admin-section">
@@ -262,10 +304,11 @@ ADMIN_HTML = '''<!DOCTYPE html><html><head>
         <form action="/add_question" method="POST">
             <input type="hidden" name="password" value="{{ password }}">
             <input type="text" name="question" placeholder="Question" required style="width: 100%; margin-bottom: 10px;"><br>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
                 <input type="text" name="option1" placeholder="Option 1" required>
                 <input type="text" name="option2" placeholder="Option 2" required>
                 <input type="text" name="option3" placeholder="Option 3" required>
+                <input type="text" name="option4" placeholder="Option 4" required>
             </div>
             <input type="text" name="correct" placeholder="Correct Answer" required style="margin-top: 10px; width: 100%;">
             <button type="submit" class="export-btn" style="margin-top: 10px;">Add Question</button>
@@ -347,7 +390,7 @@ def show_question():
             return redirect(f"/result?test_id={test_id}")
         
         question_data = questions[qno-1]
-        if len(question_data) < 5:
+        if len(question_data) < 6:
             raise ValueError("Invalid question format")
         
         return render_template_string(QUESTION_HTML, 
@@ -359,6 +402,7 @@ def show_question():
 
 @app.route("/submit_answer", methods=["POST"])
 def submit_answer():
+    conn = None
     try:
         test_id = request.form.get("test_id")
         qno = int(request.form.get("qno", 1))
@@ -437,6 +481,9 @@ def result():
                      WHERE id = ?''', (end_time, duration, test_id))
         conn.commit()
         
+        # Update data.txt file
+        update_data_file()
+        
         # Format test date nicely
         test_date = format_test_date(test_data['start_time'])
         
@@ -456,6 +503,7 @@ def result():
 
 @app.route("/admin")
 def admin():
+    conn = None
     try:
         password = request.args.get("password")
         if not password or password != get_admin_password():
@@ -516,12 +564,13 @@ def add_question_route():
         option1 = request.form.get("option1", "").strip()
         option2 = request.form.get("option2", "").strip()
         option3 = request.form.get("option3", "").strip()
+        option4 = request.form.get("option4", "").strip()
         correct = request.form.get("correct", "").strip()
         
-        if not all([question, option1, option2, option3, correct]):
+        if not all([question, option1, option2, option3, option4, correct]):
             return "All fields are required", 400
         
-        if add_question(question, option1, option2, option3, correct):
+        if add_question(question, option1, option2, option3, option4, correct):
             return redirect(f"/admin?password={password}")
         else:
             return "Failed to add question", 500
@@ -565,6 +614,30 @@ def export_csv():
         if conn:
             conn.close()
 
+@app.route("/export_txt")
+def export_txt():
+    try:
+        password = request.args.get("password")
+        if not password or password != get_admin_password():
+            return "Access Denied!"
+        
+        # Simply return the data.txt file we're already maintaining
+        if os.path.exists(DATA_FILE):
+            with open(DATA_FILE, "r") as f:
+                content = f.read()
+            
+            response = app.response_class(
+                response=content,
+                mimetype="text/plain",
+                headers={"Content-disposition": "attachment; filename=test_results.txt"}
+            )
+            return response
+        else:
+            return "Data file not found", 404
+    except Exception as e:
+        print(f"TXT download error: {e}")
+        return "Error generating download", 500
+
 # ===== ERROR HANDLERS =====
 @app.errorhandler(403)
 def forbidden(e):
@@ -582,6 +655,9 @@ def internal_error(e):
 if __name__ == "__main__":
     create_config_files()
     init_db()
+    
+    # Create initial data.txt file
+    update_data_file()
     
     # For development
     app.run(debug=True, host='0.0.0.0', port=5000)
