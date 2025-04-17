@@ -12,7 +12,7 @@ CODES_FILE = os.path.join(CONFIG_DIR, "codes.txt")
 QUESTIONS_FILE = os.path.join(CONFIG_DIR, "questions.txt")
 DATABASE_FILE = "database.db"
 DATA_FILE = "data.txt"  # New file to store results
-WHATSAPP_NUMBER = "917694993234"
+WHATSAPP_NUMBER = "919773950954"
 
 # ===== INITIALIZATION =====
 def create_config_files():
